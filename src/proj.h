@@ -2,9 +2,13 @@
 // Created by YKROPCHIK on 17.06.2020.
 //
 #include <vector>
+#include <map>
 
 #define TURN_ON true
 #define TURN_OFF false
+#define HUM_SENS 0
+#define TEMP_SENS 1
+#define PRESS_SENS 2
 
 class Sensor;
 class HumiditySensor;
@@ -12,9 +16,9 @@ class TemperatureSensor;
 class PressureSensor;
 class Base;
 class EventManager;
-class MeasurmentListener;
-class HeaterListener;
-class HumidifierListener;
+class MeasurementListener;
+class TempListener;
+class HumListener;
 class Heater;
 class Humidifier;
 
@@ -25,62 +29,96 @@ protected:
 
 public:
     virtual unsigned int getId() = 0;
-    virtual void setId(unsigned int id) = 0;
+    virtual void setId(unsigned int id) = 0;            // oh, shit, i do not know why i need these methods, but just let them be...
+    virtual int measure() = 0;
 };
 
-class HumiditySensor : virtual public Sensor {
+class HumiditySensor : public Sensor {
+private:
+    unsigned int humidity;                              /// property for simulate measurement
+
 public:
-    HumiditySensor(unsigned int id, Base base);
-    unsigned int measure();
+    HumiditySensor(Base *base);
+    unsigned int getId() override;
+    void setId(unsigned int id) override;
+    int measure() override;
 };
 
 class TemperatureSensor : public Sensor {
+private:
+    int temperature;                                  /// property for simulate measurement
+
 public:
-    TemperatureSensor(unsigned int id, Base base);
-    double measure();
+    TemperatureSensor(Base *base);
+    unsigned int getId() override;
+    void setId(unsigned int id) override;
+    int measure() override;
 };
 
 class PressureSensor : public Sensor {
+private:
+    unsigned int pressure;                              /// property for simulate measurement
+
 public:
-    PressureSensor(unsigned int id, Base base);
-    unsigned int measure();
+    PressureSensor(Base *base);
+    unsigned int getId() override;
+    void setId(unsigned int id) override;
+    int measure() override;
 };
 
 class Base {
 private:
-    std::vector<Sensor*> sensors;
-    EventManager *events;
+    Sensor* sensors[3];
 
 public:
-
-    void checkHumidity();
-    void checkTemperature();
-    void checkPressure();
+    EventManager *events;
+    Base();
+    bool addSensor(int type, Sensor* sensor);
+    bool removeSensor(int type);
+    unsigned int checkHumidity();
+    int checkTemperature();
+    unsigned int checkPressure();
 };
 
 class EventManager {
 private:
-    std::vector<MeasurmentListener*> listeners;
+    std::map<int, MeasurementListener*> listeners;
 
 public:
-    void subscribe();
+    void subscribe(int type, MeasurementListener* listener);
+    void unsubscribe(int type);
+    void notify(int sensorType, int data);
 };
 
-class MeasurmentListener {
+class MeasurementListener {
 public:
-    virtual void setRequirement(void* data) = 0;
-    virtual void* getRequirement() = 0;
-    virtual void update(void* data) = 0;
+    virtual bool setRequirement(int requirement) = 0;
+    virtual int getRequirement() = 0;
+    virtual void update(int data) = 0;
 };
 
-class HeaterListener : public MeasurmentListener {
+class TempListener : public MeasurementListener {
+private:
+    int requirementTemp;
+    Heater* heater;
+
 public:
-    HeaterListener(double requirement);
+    TempListener(int requirement, Heater* heater);
+    bool setRequirement(int requirement) override;
+    int getRequirement()override;
+    void update(int changedTemp) override;
 };
 
-class HumidifierListener : public MeasurmentListener {
+class HumListener : public MeasurementListener {
+private:
+    unsigned int requirementHum;
+    Humidifier* humidifier;
+
 public:
-    HumidifierListener(unsigned int requirement);
+    HumListener(unsigned int requirement, Humidifier* humidifier);
+    bool setRequirement(int requirement) override;
+    int getRequirement()override;
+    void update(int changedHum) override;
 };
 
 class Heater {
@@ -88,6 +126,7 @@ private:
     bool state;
 
 public:
+    Heater();
     void setState(bool state);
     bool getState();
 };
@@ -97,6 +136,7 @@ private:
     bool state;
 
 public:
+    Humidifier();
     void setState(bool state);
     bool getState();
 };
